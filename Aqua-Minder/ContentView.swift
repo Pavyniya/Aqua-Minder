@@ -13,65 +13,78 @@ struct ContentView: View {
     @State private var lastLogAmount = 0
     
     var body: some View {
-        ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.cyan.opacity(0.05)]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            
-            VStack(spacing: 40) {
-                // Header
-                VStack(spacing: 8) {
-                    Text("Aqua Minder")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-                    
-                    Text("Stay hydrated, stay healthy")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.top, 20)
-                
-                // Progress Ring
-                ProgressRingView(
-                    progress: waterData.progressPercentage,
-                    totalAmount: waterData.todayTotal,
-                    goalAmount: waterData.settings.dailyGoal
+        NavigationView {
+            ZStack {
+                // Background gradient
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.cyan.opacity(0.05)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
+                .ignoresSafeArea()
                 
-                // Quick Logging Button
-                QuickLogButton(waterData: waterData, showUndo: $showUndo, lastLogAmount: $lastLogAmount)
-                
-                Spacer()
-            }
-            .padding()
-            
-            // Undo Snackbar
-            if showUndo {
-                VStack {
-                    Spacer()
-                    UndoSnackbar(
-                        amount: lastLogAmount,
-                        onUndo: {
-                            waterData.removeLastLog()
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                showUndo = false
-                            }
-                        },
-                        onDismiss: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                showUndo = false
-                            }
+                VStack(spacing: 40) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Text("Aqua Minder")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                        
+                        Text("Stay hydrated, stay healthy")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.top, 20)
+                    
+                    // Progress Ring (tappable to open history)
+                    NavigationLink(destination: HistoryView(waterData: waterData)) {
+                        VStack(spacing: 8) {
+                            ProgressRingView(
+                                progress: waterData.progressPercentage,
+                                totalAmount: waterData.todayTotal,
+                                goalAmount: waterData.settings.dailyGoal
+                            )
+                            
+                            Text("Tap to view history")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .opacity(0.7)
                         }
-                    )
-                    .padding(.bottom, 50)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    // Quick Logging Button
+                    QuickLogButton(waterData: waterData, showUndo: $showUndo, lastLogAmount: $lastLogAmount)
+                    
+                    Spacer()
+                }
+                .padding()
+                
+                // Undo Snackbar
+                if showUndo {
+                    VStack {
+                        Spacer()
+                        UndoSnackbar(
+                            amount: lastLogAmount,
+                            onUndo: {
+                                waterData.removeLastLog()
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showUndo = false
+                                }
+                            },
+                            onDismiss: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showUndo = false
+                                }
+                            }
+                        )
+                        .padding(.bottom, 50)
+                    }
                 }
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 
@@ -418,6 +431,8 @@ struct UndoSnackbar: View {
     }
 }
 
-#Preview {
-    ContentView()
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }

@@ -75,4 +75,41 @@ class WaterDataManager: ObservableObject {
             calendar.isDate(log.timestamp, inSameDayAs: today)
         }.sorted { $0.timestamp > $1.timestamp }
     }
+    
+    // Get weekly logs (past 7 days)
+    func getWeeklyLogs() -> [WaterLog] {
+        let calendar = Calendar.current
+        let today = Date()
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: today) ?? today
+        
+        return waterLogs.filter { log in
+            log.timestamp >= weekAgo && log.timestamp <= today
+        }.sorted { $0.timestamp > $1.timestamp }
+    }
+    
+    // Get monthly logs (past 30 days)
+    func getMonthlyLogs() -> [WaterLog] {
+        let calendar = Calendar.current
+        let today = Date()
+        let monthAgo = calendar.date(byAdding: .day, value: -30, to: today) ?? today
+        
+        return waterLogs.filter { log in
+            log.timestamp >= monthAgo && log.timestamp <= today
+        }.sorted { $0.timestamp > $1.timestamp }
+    }
+    
+    // Get weekly total
+    func getWeeklyTotal() -> Int {
+        return getWeeklyLogs().reduce(0) { $0 + $1.amount }
+    }
+    
+    // Get monthly total
+    func getMonthlyTotal() -> Int {
+        return getMonthlyLogs().reduce(0) { $0 + $1.amount }
+    }
+    
+    // Delete a specific log
+    func deleteLog(_ log: WaterLog) {
+        waterLogs.removeAll { $0.id == log.id }
+    }
 }
