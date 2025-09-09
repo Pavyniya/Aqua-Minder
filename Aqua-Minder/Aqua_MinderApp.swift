@@ -9,9 +9,27 @@ import SwiftUI
 
 @main
 struct Aqua_MinderApp: App {
+    @StateObject private var waterData = WaterDataManager()
+    @State private var hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if hasCompletedOnboarding {
+                ContentView()
+                    .environmentObject(waterData)
+            } else {
+                OnboardingView(waterData: waterData)
+                    .onAppear {
+                        // Listen for onboarding completion
+                        NotificationCenter.default.addObserver(
+                            forName: NSNotification.Name("OnboardingCompleted"),
+                            object: nil,
+                            queue: .main
+                        ) { _ in
+                            hasCompletedOnboarding = true
+                        }
+                    }
+            }
         }
     }
 }

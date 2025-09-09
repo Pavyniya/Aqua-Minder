@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var waterData = WaterDataManager()
+    @EnvironmentObject var waterData: WaterDataManager
     @State private var showUndo = false
     @State private var lastLogAmount = 0
     
@@ -40,7 +40,7 @@ struct ContentView: View {
                             
                             Spacer()
                             
-                            NavigationLink(destination: SettingsView(waterData: waterData)) {
+                            NavigationLink(destination: SettingsView()) {
                                 Image(systemName: "gearshape.fill")
                                     .font(.title2)
                                     .foregroundColor(.blue)
@@ -53,7 +53,7 @@ struct ContentView: View {
                     .padding(.top, 20)
                     
                     // Progress Ring (tappable to open history)
-                    NavigationLink(destination: HistoryView(waterData: waterData)) {
+                    NavigationLink(destination: HistoryView()) {
                         VStack(spacing: 8) {
                             ProgressRingView(
                                 progress: waterData.progressPercentage,

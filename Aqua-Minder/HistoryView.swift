@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct HistoryView: View {
-    @ObservedObject var waterData: WaterDataManager
+    @EnvironmentObject var waterData: WaterDataManager
     @State private var selectedTimeframe: Timeframe = .today
     @State private var showingDeleteAlert = false
     @State private var logToDelete: WaterLog?
@@ -341,5 +341,6 @@ struct MonthlyChartView: View {
 }
 
 #Preview {
-    HistoryView(waterData: WaterDataManager())
+    HistoryView()
+        .environmentObject(WaterDataManager())
 }

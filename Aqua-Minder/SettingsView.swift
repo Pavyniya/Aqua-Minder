@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject var waterData: WaterDataManager
+    @EnvironmentObject var waterData: WaterDataManager
     @Environment(\.presentationMode) var presentationMode
     @State private var showingResetAlert = false
     @State private var showingSaveConfirmation = false
@@ -636,5 +636,6 @@ struct AppInfoSection: View {
 }
 
 #Preview {
-    SettingsView(waterData: WaterDataManager())
+    SettingsView()
+        .environmentObject(WaterDataManager())
 }
