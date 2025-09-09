@@ -24,16 +24,31 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 40) {
-                    // Header
+                    // Header with Settings button
                     VStack(spacing: 8) {
-                        Text("Aqua Minder")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.primary)
-                        
-                        Text("Stay hydrated, stay healthy")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Aqua Minder")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.primary)
+                                
+                                Text("Stay hydrated, stay healthy")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            NavigationLink(destination: SettingsView(waterData: waterData)) {
+                                Image(systemName: "gearshape.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(22)
+                            }
+                        }
                     }
                     .padding(.top, 20)
                     

@@ -112,4 +112,15 @@ class WaterDataManager: ObservableObject {
     func deleteLog(_ log: WaterLog) {
         waterLogs.removeAll { $0.id == log.id }
     }
+    
+    // Reset all data (logs and settings)
+    func resetAllData() {
+        waterLogs.removeAll()
+        settings = WaterSettings()
+    }
+    
+    // Reset settings to defaults but keep logs
+    func resetToDefaults() {
+        settings = WaterSettings()
+    }
 }
