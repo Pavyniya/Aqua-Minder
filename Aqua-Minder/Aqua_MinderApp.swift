@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 @main
 struct Aqua_MinderApp: App {
@@ -17,6 +18,9 @@ struct Aqua_MinderApp: App {
             if hasCompletedOnboarding {
                 ContentView()
                     .environmentObject(waterData)
+                    .onAppear {
+                        setupNotificationHandling()
+                    }
             } else {
                 OnboardingView(waterData: waterData)
                     .onAppear {
@@ -31,5 +35,29 @@ struct Aqua_MinderApp: App {
                     }
             }
         }
+    }
+    
+    private func setupNotificationHandling() {
+        // Handle notification actions
+        UNUserNotificationCenter.current().delegate = NotificationDelegate(waterData: waterData)
+    }
+}
+
+// Notification delegate to handle interactive notifications
+class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    let waterData: WaterDataManager
+    
+    init(waterData: WaterDataManager) {
+        self.waterData = waterData
+    }
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        waterData.reminderManager.handleNotificationAction(response.actionIdentifier, waterData: waterData)
+        completionHandler()
+    }
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // Show notification even when app is in foreground
+        completionHandler([.alert, .sound, .badge])
     }
 }

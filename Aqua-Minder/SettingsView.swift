@@ -43,6 +43,15 @@ struct SettingsView: View {
                     Text("Customize your bottle size presets for quick logging.")
                 }
                 
+                // Reminders Section
+                Section {
+                    RemindersSection()
+                } header: {
+                    Text("Reminders")
+                } footer: {
+                    Text("Get gentle reminders to stay hydrated throughout the day.")
+                }
+                
                 // Quick Actions Section
                 Section {
                     QuickActionsSection(
@@ -632,6 +641,445 @@ struct AppInfoSection: View {
                     .fontWeight(.medium)
             }
         }
+    }
+}
+
+// Reminders Section
+struct RemindersSection: View {
+    @EnvironmentObject var waterData: WaterDataManager
+    @State private var showingPermissionAlert = false
+    @State private var showingAddReminder = false
+    @State private var showingTestAlert = false
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Permission Status
+            PermissionStatusView()
+            
+            // Reminder Toggle
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Enable Reminders")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text(waterData.reminderManager.hasPermission ? 
+                         "Get notified to drink water" : 
+                         "Enable notifications to get reminders")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Toggle("", isOn: Binding(
+                    get: { waterData.reminderManager.settings.isEnabled && waterData.reminderManager.hasPermission },
+                    set: { newValue in
+                        if newValue && !waterData.reminderManager.hasPermission {
+                            showingPermissionAlert = true
+                        } else {
+                            waterData.reminderManager.settings.isEnabled = newValue
+                            waterData.updateReminderSettings(waterData.reminderManager.settings)
+                        }
+                    }
+                ))
+                .disabled(!waterData.reminderManager.hasPermission)
+            }
+            .padding(.vertical, 8)
+            
+            if waterData.reminderManager.hasPermission && waterData.reminderManager.settings.isEnabled {
+                // Reminder Times
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Reminder Times")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Spacer()
+                        
+                        Button("Add") {
+                            showingAddReminder = true
+                        }
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                    }
+                    
+                    ForEach(Array(waterData.reminderManager.settings.reminderTimes.enumerated()), id: \.element.id) { index, reminder in
+                        ReminderTimeRow(
+                            reminder: reminder,
+                            index: index
+                        )
+                    }
+                }
+                
+                // Reminder Frequency
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Frequency")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Picker("Frequency", selection: Binding(
+                        get: { waterData.reminderManager.settings.reminderFrequency },
+                        set: { newValue in
+                            waterData.reminderManager.settings.reminderFrequency = newValue
+                            waterData.updateReminderSettings(waterData.reminderManager.settings)
+                        }
+                    )) {
+                        ForEach(ReminderFrequency.allCases, id: \.self) { frequency in
+                            Text(frequency.displayName).tag(frequency)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+                
+                // Custom Message
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Reminder Message")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    TextField("Enter custom message", text: Binding(
+                        get: { waterData.reminderManager.settings.reminderMessage },
+                        set: { newValue in
+                            waterData.reminderManager.settings.reminderMessage = newValue
+                            waterData.updateReminderSettings(waterData.reminderManager.settings)
+                        }
+                    ))
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+                
+                // Test Reminder Button
+                Button(action: {
+                    waterData.reminderManager.scheduleTestReminder()
+                    showingTestAlert = true
+                }) {
+                    HStack {
+                        Image(systemName: "bell.fill")
+                            .foregroundColor(.blue)
+                        
+                        Text("Send Test Reminder")
+                            .foregroundColor(.blue)
+                            .fontWeight(.medium)
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+        }
+        .alert("Notification Permission Required", isPresented: $showingPermissionAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Enable Notifications") {
+                Task {
+                    await waterData.reminderManager.requestNotificationPermission()
+                    if waterData.reminderManager.hasPermission {
+                        waterData.reminderManager.settings.isEnabled = true
+                        waterData.updateReminderSettings(waterData.reminderManager.settings)
+                    }
+                }
+            }
+        } message: {
+            Text("Aqua Minder needs notification permission to send you water reminders. You can enable this in Settings > Notifications.")
+        }
+        .alert("Test Reminder Sent", isPresented: $showingTestAlert) {
+            Button("OK") { }
+        } message: {
+            Text("A test reminder will arrive in 5 seconds!")
+        }
+        .sheet(isPresented: $showingAddReminder) {
+            AddReminderTimeView()
+        }
+    }
+}
+
+// Permission Status View
+struct PermissionStatusView: View {
+    @EnvironmentObject var waterData: WaterDataManager
+    
+    var body: some View {
+        HStack {
+            Image(systemName: waterData.reminderManager.hasPermission ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundColor(waterData.reminderManager.hasPermission ? .green : .orange)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(waterData.reminderManager.hasPermission ? "Notifications Enabled" : "Notifications Disabled")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text(waterData.reminderManager.hasPermission ? 
+                     "You'll receive water reminders" : 
+                     "Enable in Settings to get reminders")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            if !waterData.reminderManager.hasPermission {
+                Button("Enable") {
+                    Task {
+                        await waterData.reminderManager.requestNotificationPermission()
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.blue)
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(waterData.reminderManager.hasPermission ? 
+                   Color.green.opacity(0.1) : 
+                   Color.orange.opacity(0.1))
+        .cornerRadius(8)
+    }
+}
+
+// Reminder Time Row
+struct ReminderTimeRow: View {
+    let reminder: ReminderTime
+    let index: Int
+    @EnvironmentObject var waterData: WaterDataManager
+    @State private var showingEditTime = false
+    
+    var body: some View {
+        HStack {
+            Button(action: {
+                waterData.reminderManager.toggleReminderTime(at: index)
+            }) {
+                Image(systemName: reminder.isEnabled ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(reminder.isEnabled ? .green : .gray)
+            }
+            
+            Text(reminder.timeString)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            Button(action: {
+                showingEditTime = true
+            }) {
+                Image(systemName: "pencil")
+                    .foregroundColor(.blue)
+            }
+            
+            Button(action: {
+                waterData.reminderManager.removeReminderTime(at: index)
+            }) {
+                Image(systemName: "trash")
+                    .foregroundColor(.red)
+            }
+        }
+        .padding(.vertical, 4)
+        .sheet(isPresented: $showingEditTime) {
+            EditReminderTimeView(index: index)
+        }
+    }
+}
+
+// Add Reminder Time View
+struct AddReminderTimeView: View {
+    @EnvironmentObject var waterData: WaterDataManager
+    @Environment(\.presentationMode) var presentationMode
+    @State private var selectedHour = 9
+    @State private var selectedMinute = 0
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Add Reminder Time")
+                        .font(.headline)
+                    
+                    Text("Choose when you want to be reminded to drink water")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                VStack(spacing: 16) {
+                    HStack {
+                        Text("Time")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Picker("Hour", selection: $selectedHour) {
+                            ForEach(0..<24, id: \.self) { hour in
+                                Text(String(format: "%02d", hour)).tag(hour)
+                            }
+                        }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(width: 80)
+                        
+                        Text(":")
+                            .font(.title)
+                        
+                        Picker("Minute", selection: $selectedMinute) {
+                            ForEach(0..<60, id: \.self) { minute in
+                                Text(String(format: "%02d", minute)).tag(minute)
+                            }
+                        }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(width: 80)
+                    }
+                    
+                    // Preview
+                    VStack(spacing: 8) {
+                        Text("Preview")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Text(formatTime(hour: selectedHour, minute: selectedMinute))
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Add Reminder")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Add") {
+                        waterData.reminderManager.addReminderTime(hour: selectedHour, minute: selectedMinute)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func formatTime(hour: Int, minute: Int) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        let date = Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date()) ?? Date()
+        return formatter.string(from: date)
+    }
+}
+
+// Edit Reminder Time View
+struct EditReminderTimeView: View {
+    @EnvironmentObject var waterData: WaterDataManager
+    @Environment(\.presentationMode) var presentationMode
+    let index: Int
+    @State private var selectedHour: Int
+    @State private var selectedMinute: Int
+    
+    init(index: Int) {
+        self.index = index
+        // We'll get the reminder data from the environment object
+        self._selectedHour = State(initialValue: 9)
+        self._selectedMinute = State(initialValue: 0)
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Edit Reminder Time")
+                        .font(.headline)
+                    
+                    Text("Update the reminder time")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                VStack(spacing: 16) {
+                    HStack {
+                        Text("Time")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Picker("Hour", selection: $selectedHour) {
+                            ForEach(0..<24, id: \.self) { hour in
+                                Text(String(format: "%02d", hour)).tag(hour)
+                            }
+                        }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(width: 80)
+                        
+                        Text(":")
+                            .font(.title)
+                        
+                        Picker("Minute", selection: $selectedMinute) {
+                            ForEach(0..<60, id: \.self) { minute in
+                                Text(String(format: "%02d", minute)).tag(minute)
+                            }
+                        }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(width: 80)
+                    }
+                    
+                    // Preview
+                    VStack(spacing: 8) {
+                        Text("Preview")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Text(formatTime(hour: selectedHour, minute: selectedMinute))
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Edit Reminder")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                if index < waterData.reminderManager.settings.reminderTimes.count {
+                    let reminder = waterData.reminderManager.settings.reminderTimes[index]
+                    selectedHour = reminder.hour
+                    selectedMinute = reminder.minute
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        waterData.reminderManager.updateReminderTime(at: index, hour: selectedHour, minute: selectedMinute)
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func formatTime(hour: Int, minute: Int) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        let date = Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date()) ?? Date()
+        return formatter.string(from: date)
     }
 }
 

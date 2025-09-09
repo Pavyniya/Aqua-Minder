@@ -24,11 +24,13 @@ struct WaterSettings: Codable {
     var dailyGoal: Int // Daily goal in milliliters
     var sipSize: Int // Default sip size in milliliters
     var bottleSize: Int // Default bottle size in milliliters
+    var reminderSettings: ReminderSettings
     
     init() {
         self.dailyGoal = 2500 // Default 2.5L
         self.sipSize = 50 // Default 50ml sip
         self.bottleSize = 750 // Default 750ml bottle
+        self.reminderSettings = ReminderSettings()
     }
 }
 
@@ -36,6 +38,7 @@ struct WaterSettings: Codable {
 class WaterDataManager: ObservableObject {
     @Published var waterLogs: [WaterLog] = []
     @Published var settings = WaterSettings()
+    @Published var reminderManager = ReminderManager()
     
     // Calculate today's total water intake
     var todayTotal: Int {
@@ -117,10 +120,31 @@ class WaterDataManager: ObservableObject {
     func resetAllData() {
         waterLogs.removeAll()
         settings = WaterSettings()
+        reminderManager.settings = ReminderSettings()
+        reminderManager.saveSettings()
+        reminderManager.scheduleReminders()
     }
     
     // Reset settings to defaults but keep logs
     func resetToDefaults() {
         settings = WaterSettings()
+        reminderManager.settings = ReminderSettings()
+        reminderManager.saveSettings()
+        reminderManager.scheduleReminders()
+    }
+    
+    // Sync reminder settings
+    func syncReminderSettings() {
+        reminderManager.settings = settings.reminderSettings
+        reminderManager.saveSettings()
+        reminderManager.scheduleReminders()
+    }
+    
+    // Update reminder settings
+    func updateReminderSettings(_ newSettings: ReminderSettings) {
+        settings.reminderSettings = newSettings
+        reminderManager.settings = newSettings
+        reminderManager.saveSettings()
+        reminderManager.scheduleReminders()
     }
 }

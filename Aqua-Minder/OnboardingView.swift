@@ -16,7 +16,7 @@ struct OnboardingView: View {
     @State private var showingCustomGoal = false
     @State private var showingCustomBottle = false
     
-    private let totalSteps = 5
+    private let totalSteps = 6
     
     var body: some View {
         ZStack {
@@ -57,9 +57,13 @@ struct OnboardingView: View {
                     )
                     .tag(3)
                     
-                    // Step 5: Completion
-                    CompletionStep()
+                    // Step 5: Reminders
+                    ReminderSetupStep(waterData: waterData)
                         .tag(4)
+                    
+                    // Step 6: Completion
+                    CompletionStep()
+                        .tag(5)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
                 .animation(.easeInOut, value: currentStep)
@@ -844,6 +848,146 @@ struct CustomBottleSheet: View {
             return String(format: "%.1fL", Double(amount))
         } else {
             return "\(amount)ml"
+        }
+    }
+}
+
+// Reminder Setup Step
+struct ReminderSetupStep: View {
+    @ObservedObject var waterData: WaterDataManager
+    @State private var showingPermissionAlert = false
+    
+    var body: some View {
+        VStack(spacing: 40) {
+            Spacer()
+            
+            // Header
+            VStack(spacing: 16) {
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.purple)
+                
+                VStack(spacing: 8) {
+                    Text("Enable Reminders")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    
+                    Text("Get gentle reminders to stay hydrated")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            
+            // Permission Status
+            VStack(spacing: 16) {
+                HStack {
+                    Image(systemName: waterData.reminderManager.hasPermission ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundColor(waterData.reminderManager.hasPermission ? .green : .orange)
+                        .font(.title2)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(waterData.reminderManager.hasPermission ? "Notifications Ready" : "Enable Notifications")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text(waterData.reminderManager.hasPermission ? 
+                             "You'll receive water reminders" : 
+                             "Allow notifications to get reminders")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+                .padding()
+                .background(waterData.reminderManager.hasPermission ? 
+                           Color.green.opacity(0.1) : 
+                           Color.orange.opacity(0.1))
+                .cornerRadius(12)
+                
+                if !waterData.reminderManager.hasPermission {
+                    Button(action: {
+                        Task {
+                            let granted = await waterData.reminderManager.requestNotificationPermission()
+                            if !granted {
+                                showingPermissionAlert = true
+                            }
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: "bell.fill")
+                                .foregroundColor(.white)
+                            
+                            Text("Enable Notifications")
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.purple, Color.blue]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                    }
+                }
+            }
+            
+            // Benefits
+            VStack(spacing: 16) {
+                Text("Why Enable Reminders?")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                VStack(spacing: 12) {
+                    BenefitRow(icon: "clock.fill", text: "Stay on track with your daily goal")
+                    BenefitRow(icon: "heart.fill", text: "Build healthy hydration habits")
+                    BenefitRow(icon: "brain.head.profile", text: "Improve focus and energy levels")
+                    BenefitRow(icon: "checkmark.circle.fill", text: "Quick log water with one tap")
+                }
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+            
+            Spacer()
+        }
+        .alert("Notification Permission Required", isPresented: $showingPermissionAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Open Settings") {
+                if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(settingsUrl)
+                }
+            }
+        } message: {
+            Text("Please enable notifications in Settings > Notifications > Aqua Minder to receive water reminders.")
+        }
+    }
+}
+
+// Benefit Row Component
+struct BenefitRow: View {
+    let icon: String
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(.purple)
+                .frame(width: 24)
+            
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.primary)
+            
+            Spacer()
         }
     }
 }
